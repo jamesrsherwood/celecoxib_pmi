@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celecoxib PMI Calculator with Plotly Stacked Bar Chart</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        button, input {
+            margin: 5px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #pmiChart {
+            max-width: 800px;  /* Restricting the chart width */
+            height: 400px;
+            margin: 20px 0;
+        }
+    </style>
+    <!-- Load Plotly from CDN -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+
+<h1>Celecoxib synthesis: PMI calculator</h1>
+
+<!-- Input controls for adjusting values -->
+<div>
+    <label>Yield (step 1): <span id="yield_step_1_val">75%</span></label>
+    <button onclick="adjustValue('yield_step_1', -0.05)">Decrease</button>
+    <button onclick="adjustValue('yield_step_1', 0.05)">Increase</button>
+</div>
+
+<div>
+    <label>Yield (step 2): <span id="yield_step_2_val">75%</span></label>
+    <button onclick="adjustValue('yield_step_2', -0.05)">Decrease</button>
+    <button onclick="adjustValue('yield_step_2', 0.05)">Increase</button>
+</div>
+
+<div>
+    <label>Ethyl trifluoroacetate molar excess: <span id="Ethyl_trifluoroacetate_excess_val">1.1</span></label>
+    <button onclick="adjustValue('Ethyl_trifluoroacetate_excess', -0.05)">Decrease</button>
+    <button onclick="adjustValue('Ethyl_trifluoroacetate_excess', 0.05)">Increase</button>
+</div>
+
+<div>
+    <label>4-Sulfonamidophenylhydrazine hydrochloride molar excess: <span id="Hydrazine_excess_val">1.1</span></label>
+    <button onclick="adjustValue('Hydrazine_excess', -0.05)">Decrease</button>
+    <button onclick="adjustValue('Hydrazine_excess', 0.05)">Increase</button>
+</div>
+
+<button onclick="resetValues()">Reset to Defaults</button>
+
+<h2>Results:</h2>
+<p>PMI: <span id="PMI">0</span></p>
+
+<div id="pmiChart"></div>
+
+<script>
+    let yield_step_1 = 0.75;
+    let yield_step_2 = 0.75;
+    let Ethyl_trifluoroacetate_excess = 1.1;
+    let Hydrazine_excess = 1.1;
+
+    const yield_step_1_reset = 0.75;
+    const yield_step_2_reset = 0.75;
+    const Ethyl_trifluoroacetate_excess_reset = 1.1;
+    const Hydrazine_excess_reset = 1.1;
+
+    const celecoxib_RMM = 379;
+    const celecoxib_mol = 0.002639;
+
+    function calculatePMI() {
+        const celecoxib_mass = celecoxib_RMM * celecoxib_mol;
+
+        const intermediate_mol = celecoxib_mol / yield_step_2;
+        const intermediate_mass = 230 * intermediate_mol;
+
+        const hydrazine_mol = intermediate_mol * Hydrazine_excess;
+        const hydrazine_mass = 223 * hydrazine_mol;
+
+        const EtOAc_mass = intermediate_mass * 7.477100344;
+        const Water_solvent_mass = intermediate_mass * 8.289468231;
+        const HCl_reactant_mass = intermediate_mass * 1.92315663;
+
+        const Methylacetophenone_mol = celecoxib_mol / (yield_step_1 * yield_step_2);
+        const Methylacetophenone_mass = 134 * Methylacetophenone_mol;
+
+        const Ethyl_trifluoroacetate_mol = Methylacetophenone_mol * Ethyl_trifluoroacetate_excess;
+        const Ethyl_trifluoroacetate_mass = 142 * Ethyl_trifluoroacetate_mol;
+
+        const TMO_mass = Methylacetophenone_mass * 46.396;
+
+        const NaOMe_mol = Methylacetophenone_mol * 1.4109;
+        const NaOMe_mass = 54 * NaOMe_mol;
+
+        const mass_input = TMO_mass + NaOMe_mass + Ethyl_trifluoroacetate_mass + Methylacetophenone_mass + hydrazine_mass + EtOAc_mass + Water_solvent_mass + HCl_reactant_mass;
+
+        const PMI = mass_input / celecoxib_mass;
+
+        // Individual PMI Variants Calculation
+        const mass_input_solvent = TMO_mass + EtOAc_mass;
+        const PMI_solvent = mass_input_solvent / celecoxib_mass;
+
+        const mass_input_reactants = Ethyl_trifluoroacetate_mass + Methylacetophenone_mass + hydrazine_mass;
+        const PMI_reactants = mass_input_reactants / celecoxib_mass;
+
+        const mass_input_reagents = NaOMe_mass;
+        const PMI_reagents = mass_input_reagents / celecoxib_mass;
+
+        const mass_input_water = Water_solvent_mass + HCl_reactant_mass;
+        const PMI_water = mass_input_water / celecoxib_mass;
+
+        document.getElementById("PMI").innerText = PMI.toFixed(2);
+
+        // Update Plotly Stacked Bar Chart with calculated PMI values
+        updateChart(PMI_solvent, PMI_reactants, PMI_reagents, PMI_water);
+    }
+
+    function adjustValue(variable, amount) {
+        if (variable === 'yield_step_1') {
+            yield_step_1 += amount;
+            if (yield_step_1 < 0) yield_step_1 = 0;
+            if (yield_step_1 > 1) yield_step_1 = 1;
+        }
+
+        if (variable === 'yield_step_2') {
+            yield_step_2 += amount;
+            if (yield_step_2 < 0) yield_step_2 = 0;
+            if (yield_step_2 > 1) yield_step_2 = 1;
+        }
+
+        if (variable === 'Ethyl_trifluoroacetate_excess') {
+            Ethyl_trifluoroacetate_excess += amount;
+            if (Ethyl_trifluoroacetate_excess < 1) Ethyl_trifluoroacetate_excess = 1;
+        }
+
+        if (variable === 'Hydrazine_excess') {
+            Hydrazine_excess += amount;
+            if (Hydrazine_excess < 1) Hydrazine_excess = 1;
+        }
+
+        updateUI();
+        calculatePMI();
+    }
+
+    function resetValues() {
+        yield_step_1 = yield_step_1_reset;
+        yield_step_2 = yield_step_2_reset;
+        Ethyl_trifluoroacetate_excess = Ethyl_trifluoroacetate_excess_reset;
+        Hydrazine_excess = Hydrazine_excess_reset;
+
+        updateUI();
+        calculatePMI();
+    }
+
+    function updateUI() {
+        document.getElementById("yield_step_1_val").innerText = (yield_step_1 * 100).toFixed(0) + "%";
+        document.getElementById("yield_step_2_val").innerText = (yield_step_2 * 100).toFixed(0) + "%";
+        document.getElementById("Ethyl_trifluoroacetate_excess_val").innerText = Ethyl_trifluoroacetate_excess.toFixed(2);
+        document.getElementById("Hydrazine_excess_val").innerText = Hydrazine_excess.toFixed(2);
+    }
+
+    // Initial calculation
+    calculatePMI();
+
+    // Plotly Stacked Bar Chart Setup
+    function updateChart(solvent, reactants, reagents, water) {
+        const data = [
+            {
+                type: 'bar',
+                x: [solvent],
+                y: ['PMI'],
+                name: 'Solvent',
+                orientation: 'h',
+                marker: { color: 'rgba(75, 192, 192, 0.8)' }
+            },
+            {
+                type: 'bar',
+                x: [reactants],
+                y: ['PMI'],
+                name: 'Reactants',
+                orientation: 'h',
+                marker: { color: 'rgba(153, 102, 255, 0.8)' }
+            },
+            {
+                type: 'bar',
+                x: [reagents],
+                y: ['PMI'],
+                name: 'Reagents',
+                orientation: 'h',
+                marker: { color: 'rgba(255, 159, 64, 0.8)' }
+            },
+            {
+                type: 'bar',
+                x: [water],
+                y: ['PMI'],
+                name: 'Water',
+                orientation: 'h',
+                marker: { color: 'rgba(255, 99, 132, 0.8)' }
+            }
+        ];
+
+        const layout = {
+            title: '',
+            barmode: 'stack',
+            width: 600,  // Restrict the width
+            height: 400,
+            xaxis: { title: '' },
+            yaxis: { title: '' },
+            margin: { t: 50, b: 50, l: 50, r: 50 }
+        };
+
+        Plotly.newPlot('pmiChart', data, layout);
+    }
+</script>
+
+</body>
+</html>
